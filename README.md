@@ -221,7 +221,7 @@ sequenceDiagram
     participant Register as CPU Registers (RSP/RAX)
 
     Caller->>Register: Sub RSP, 0x20 (Allocate caller stack frame)
-    Caller->>Heap: alloc(Layout::new::<[u8; 1024]>())
+    Caller->>Heap: alloc(Layout::new::<[u8#59; 1024]>())
     Heap-->>Caller: Return raw pointer 0x55FA0000
     Caller->>Caller: Store Vec { ptr: 0x55FA0000, cap: 1024, len: 0 }
 
@@ -232,7 +232,7 @@ sequenceDiagram
     Callee->>Register: Add RSP, 0x10 (Pop callee stack frame)
 
     Note over Caller,Heap: End of Scope (RAII Drop)
-    Caller->>Heap: dealloc(0x55FA0000, Layout::new::<[u8; 1024]>())
+    Caller->>Heap: dealloc(0x55FA0000, Layout::new::<[u8#59; 1024]>())
     Caller->>Register: Add RSP, 0x20 (Pop caller stack frame)
 ```
 
