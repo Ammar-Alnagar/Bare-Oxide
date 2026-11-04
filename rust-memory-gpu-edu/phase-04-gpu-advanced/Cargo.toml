@@ -1,0 +1,9 @@
+[package]
+name = "phase-04-gpu-advanced"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+bytemuck = { workspace = true }

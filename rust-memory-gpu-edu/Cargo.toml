@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "common",
+    "phase-01-cpu-basics",
+    "phase-02-cpu-low-level",
+    "phase-03-gpu-memory-basics",
+    "phase-04-gpu-advanced",
+    "phase-05-full-pipeline",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+authors = ["CUDA Rust Education Team"]
+license = "Apache-2.0"
+
+[workspace.dependencies]
+bytemuck = { version = "1.14", features = ["derive"] }
+thiserror = "1.0"
