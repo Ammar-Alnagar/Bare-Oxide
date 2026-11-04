@@ -1,0 +1,11 @@
+[package]
+name = "phase-05-full-pipeline"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+phase-02-cpu-low-level = { path = "../phase-02-cpu-low-level" }
+phase-03-gpu-memory-basics = { path = "../phase-03-gpu-memory-basics" }
+bytemuck = { workspace = true }
