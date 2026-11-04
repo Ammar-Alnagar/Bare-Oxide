@@ -1,10 +1,14 @@
-//! Phase 3: GPU Memory with cuda-rust runtime patterns.
+#![allow(unused_variables, dead_code, unused_mut, unused_imports)]
+//! Phase 3: GPU Memory with cuda-rust - Student Exercises
+//!
+//! Implement GPU pipeline harnesses, DeviceBox asynchronous frees, and safe launch boundaries.
+//! Run `cargo test -p phase-03-gpu-memory-basics` to verify your implementations.
 
 use common::{DeviceCopy, EduContext, EduDeviceBuffer, EduStream};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-/// Educational demonstration of CudaContext and CudaStream orchestration.
+/// EXERCISE 1: GPU Pipeline Harness
 pub struct GpuPipelineHarness {
     pub context: Arc<EduContext>,
     pub stream: Arc<EduStream>,
@@ -12,27 +16,28 @@ pub struct GpuPipelineHarness {
 
 impl GpuPipelineHarness {
     pub fn new(ordinal: usize) -> Result<Self, String> {
-        let context = EduContext::new(ordinal)?;
-        let stream = context.new_stream()?;
-        Ok(Self { context, stream })
+        // TODO: Create EduContext for device ordinal, then create a new stream.
+        todo!("Exercise 1A: Implement GpuPipelineHarness::new")
     }
 
     pub fn allocate_and_upload<T: DeviceCopy>(
         &self,
         data: &[T],
     ) -> Result<EduDeviceBuffer<T>, String> {
-        EduDeviceBuffer::from_host(&self.stream, data)
+        // TODO: Call EduDeviceBuffer::from_host using self.stream.
+        todo!("Exercise 1B: Implement GpuPipelineHarness::allocate_and_upload")
     }
 
     pub fn allocate_zeroed<T: DeviceCopy>(
         &self,
         len: usize,
     ) -> Result<EduDeviceBuffer<T>, String> {
-        EduDeviceBuffer::zeroed(&self.stream, len)
+        // TODO: Call EduDeviceBuffer::zeroed using self.stream.
+        todo!("Exercise 1C: Implement GpuPipelineHarness::allocate_zeroed")
     }
 }
 
-/// Simulated DeviceBox demonstrating stream-ordered asynchronous deallocation.
+/// EXERCISE 2: DeviceBox with Stream-Ordered Asynchronous Free
 pub struct EduDeviceBox<T: DeviceCopy> {
     buffer: Option<EduDeviceBuffer<T>>,
     stream: Arc<EduStream>,
@@ -41,68 +46,35 @@ pub struct EduDeviceBox<T: DeviceCopy> {
 
 impl<T: DeviceCopy> EduDeviceBox<T> {
     pub fn new(stream: Arc<EduStream>, value: T) -> Result<Self, String> {
-        let slice = [value];
-        let buffer = EduDeviceBuffer::from_host(&stream, &slice)?;
-        Ok(Self {
-            buffer: Some(buffer),
-            stream,
-            async_freed: Arc::new(AtomicBool::new(false)),
-        })
+        // TODO: Allocate single-element device buffer and initialize with value.
+        todo!("Exercise 2A: Implement EduDeviceBox::new")
     }
 
-    /// Free asynchronously on the stream.
     pub fn free_async(mut self) -> Result<(), String> {
-        if let Some(buf) = self.buffer.take() {
-            // Enqueue asynchronous deallocation on the stream
-            self.stream.synchronize()?;
-            drop(buf);
-            self.async_freed.store(true, Ordering::SeqCst);
-        }
-        Ok(())
+        // TODO: Synchronize stream, take and drop the buffer, and set async_freed flag.
+        todo!("Exercise 2B: Implement EduDeviceBox::free_async")
     }
 
     pub fn is_async_freed(&self) -> bool {
-        self.async_freed.load(Ordering::SeqCst)
+        todo!("Exercise 2C: Return whether the buffer has been asynchronously freed")
     }
 }
 
 impl<T: DeviceCopy> Drop for EduDeviceBox<T> {
     fn drop(&mut self) {
-        if self.buffer.is_some() {
-            // Synchronous fallback drop
-            let _ = self.stream.synchronize();
-            self.buffer.take();
-        }
+        // Synchronous fallback deallocation
     }
 }
 
-/// Simulated kernel launch boundary with Rust ownership guarantees.
-///
-/// Immutable inputs (&DeviceBuffer) can be shared across multiple kernels.
-/// Mutable inputs (&mut DeviceBuffer) guarantee exclusive access, preventing GPU data races.
+/// EXERCISE 3: Kernel Launch Boundary with Rust Ownership
 pub fn launch_vector_scale_kernel(
     stream: &EduStream,
     input: &EduDeviceBuffer<f32>,
     output: &mut EduDeviceBuffer<f32>,
     scale: f32,
 ) -> Result<(), String> {
-    assert_eq!(input.len(), output.len(), "Buffer sizes must match");
-    stream.synchronize()?;
-
-    // In native cuda-oxide, this emits cuLaunchKernel on the stream.
-    // In our educational CPU runner, we perform the exact element-wise operation.
-    // SAFETY: Slices are valid, non-overlapping because output is &mut.
-    unsafe {
-        let in_ptr = input.as_device_ptr();
-        let out_ptr = output.as_device_ptr();
-        for i in 0..input.len() {
-            let val = *in_ptr.add(i);
-            *out_ptr.add(i) = val * scale;
-        }
-    }
-
-    stream.synchronize()?;
-    Ok(())
+    // TODO: Verify lengths match, synchronize stream, multiply input by scale, write to output.
+    todo!("Exercise 3: Implement launch_vector_scale_kernel")
 }
 
 #[cfg(test)]
@@ -110,6 +82,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "Student exercise: run with -- --ignored once implemented"]
     fn test_pipeline_harness() {
         let harness = GpuPipelineHarness::new(0).unwrap();
         let data = vec![1.0f32, 2.0, 3.0, 4.0];
@@ -121,6 +94,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Student exercise: run with -- --ignored once implemented"]
     fn test_device_box_async_free() {
         let harness = GpuPipelineHarness::new(0).unwrap();
         let dev_box = EduDeviceBox::new(harness.stream.clone(), 42u64).unwrap();
@@ -130,6 +104,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Student exercise: run with -- --ignored once implemented"]
     fn test_kernel_launch_safety() {
         let harness = GpuPipelineHarness::new(0).unwrap();
         let input_data = vec![2.0f32, 4.0, 8.0, 16.0];

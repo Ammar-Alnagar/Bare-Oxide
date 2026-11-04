@@ -1,13 +1,16 @@
-//! Phase 2: Low-Level CPU Memory, Custom Allocators, and Safe Wrappers.
+#![allow(unused_variables, dead_code, unused_mut, unused_imports)]
+//! Phase 2: CPU Low-Level Memory - Student Exercises
+//!
+//! Implement custom memory allocation, raw pointer handling, and safe RAII wrappers.
+//! Run `cargo test -p phase-02-cpu-low-level` to verify your implementations.
 
-use std::alloc::{alloc, dealloc, Layout};
+use std::alloc::Layout;
 use std::cell::UnsafeCell;
-use std::mem::ManuallyDrop;
 use std::ptr::NonNull;
 
-/// A simple high-performance Bump Allocator.
+/// EXERCISE 1: Custom Bump Allocator
 ///
-/// Allocates memory linearly from a contiguous pre-allocated byte buffer.
+/// Implement a high-performance linear bump allocator.
 pub struct BumpAllocator {
     buffer: *mut u8,
     capacity: usize,
@@ -19,64 +22,39 @@ unsafe impl Sync for BumpAllocator {}
 
 impl BumpAllocator {
     /// Creates a new bump allocator with fixed capacity in bytes.
+    /// Allocate backing memory using `std::alloc::alloc` with 16-byte alignment.
     pub fn new(capacity: usize) -> Self {
-        let layout = Layout::from_size_align(capacity, 16).expect("Valid layout");
-        // SAFETY: Allocating raw uninitialized byte buffer with 16-byte alignment.
-        let buffer = unsafe { alloc(layout) };
-        assert!(!buffer.is_null(), "Allocation failed");
-        Self {
-            buffer,
-            capacity,
-            offset: UnsafeCell::new(0),
-        }
+        // TODO: Allocate uninitialized memory buffer of `capacity` bytes aligned to 16.
+        todo!("Exercise 1A: Implement BumpAllocator::new")
     }
 
-    /// Allocates `size` bytes aligned to `align`.
+    /// Allocates `size` bytes aligned to `align` using bitwise alignment arithmetic:
+    /// `aligned_offset = (current_offset + (align - 1)) & !(align - 1)`
     pub fn alloc(&self, layout: Layout) -> Option<*mut u8> {
-        let current_offset = unsafe { *self.offset.get() };
-        let align = layout.align();
-        let size = layout.size();
-
-        // Calculate aligned starting offset
-        let aligned_offset = (current_offset + (align - 1)) & !(align - 1);
-        let next_offset = aligned_offset.checked_add(size)?;
-
-        if next_offset > self.capacity {
-            return None; // Out of memory in this bump chunk
-        }
-
-        // SAFETY: Updating bump pointer offset.
-        unsafe {
-            *self.offset.get() = next_offset;
-            Some(self.buffer.add(aligned_offset))
-        }
+        // TODO: Calculate aligned offset and advance bump pointer if within capacity.
+        todo!("Exercise 1B: Implement BumpAllocator::alloc")
     }
 
-    /// Reset allocator offset to zero, reclaiming all memory at once.
+    /// Reclaim all memory in bulk by resetting the offset to zero.
     pub fn reset(&self) {
-        // SAFETY: Resets the offset. The caller must ensure no existing references remain active.
-        unsafe {
-            *self.offset.get() = 0;
-        }
+        // TODO: Reset the internal offset to 0.
+        todo!("Exercise 1C: Implement BumpAllocator::reset")
     }
 
-    /// Current allocated bytes.
+    /// Return the currently allocated bytes.
     pub fn allocated_bytes(&self) -> usize {
-        unsafe { *self.offset.get() }
+        // TODO: Read the current offset.
+        todo!("Exercise 1D: Implement BumpAllocator::allocated_bytes")
     }
 }
 
 impl Drop for BumpAllocator {
     fn drop(&mut self) {
-        let layout = Layout::from_size_align(self.capacity, 16).expect("Valid layout");
-        // SAFETY: Buffer was allocated with identical layout in BumpAllocator::new.
-        unsafe {
-            dealloc(self.buffer, layout);
-        }
+        // TODO: Deallocate backing buffer matching its creation layout using `std::alloc::dealloc`.
     }
 }
 
-/// Safe educational RAII wrapper around manual raw allocation.
+/// EXERCISE 2: Safe RAII Buffer Wrapper around Raw Allocations
 pub struct SafeRawBuffer<T> {
     ptr: NonNull<T>,
     capacity: usize,
@@ -84,43 +62,28 @@ pub struct SafeRawBuffer<T> {
 }
 
 impl<T> SafeRawBuffer<T> {
-    /// Allocate uninitialized buffer capable of holding `capacity` elements.
+    /// Allocate uninitialized buffer capable of holding `capacity` elements of type `T`.
     pub fn with_capacity(capacity: usize) -> Self {
-        assert!(capacity > 0, "Capacity must be greater than zero");
-        let layout = Layout::array::<T>(capacity).expect("Valid array layout");
-        // SAFETY: Requesting aligned memory from the global allocator.
-        let raw = unsafe { alloc(layout) as *mut T };
-        let ptr = NonNull::new(raw).expect("Allocation out of memory");
-        Self {
-            ptr,
-            capacity,
-            len: 0,
-        }
+        // TODO: Allocate memory for `capacity` elements using Layout::array::<T>.
+        todo!("Exercise 2A: Implement SafeRawBuffer::with_capacity")
     }
 
-    /// Push an element into the buffer.
+    /// Push an element into the buffer using `std::ptr::write`.
     pub fn push(&mut self, value: T) {
-        assert!(self.len < self.capacity, "Buffer overflow");
-        // SAFETY: self.ptr is non-null, self.len < self.capacity, offset is within bounds.
-        unsafe {
-            let target = self.ptr.as_ptr().add(self.len);
-            std::ptr::write(target, value);
-        }
-        self.len += 1;
+        // TODO: Check bounds and write `value` to `self.ptr.as_ptr().add(self.len)`.
+        todo!("Exercise 2B: Implement SafeRawBuffer::push")
     }
 
-    /// Returns a slice of initialized elements.
+    /// Return slice of initialized elements.
     pub fn as_slice(&self) -> &[T] {
-        // SAFETY: Elements 0..self.len have been properly initialized with std::ptr::write.
-        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr(), self.len) }
+        // TODO: Convert raw parts into a safe slice `std::slice::from_raw_parts`.
+        todo!("Exercise 2C: Implement SafeRawBuffer::as_slice")
     }
 
-    /// Returns number of initialized elements.
     pub fn len(&self) -> usize {
         self.len
     }
 
-    /// Returns true if empty.
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
@@ -128,32 +91,14 @@ impl<T> SafeRawBuffer<T> {
 
 impl<T> Drop for SafeRawBuffer<T> {
     fn drop(&mut self) {
-        // SAFETY: Drop each initialized element in place.
-        for i in 0..self.len {
-            unsafe {
-                std::ptr::drop_in_place(self.ptr.as_ptr().add(i));
-            }
-        }
-        let layout = Layout::array::<T>(self.capacity).expect("Valid array layout");
-        // SAFETY: Free the underlying raw buffer using the original array layout.
-        unsafe {
-            dealloc(self.ptr.as_ptr() as *mut u8, layout);
-        }
+        // TODO: Drop initialized elements with `std::ptr::drop_in_place`, then `dealloc` buffer.
     }
 }
 
-/// Demonstrates ManuallyDrop and std::mem::forget.
+/// EXERCISE 3: Destructor Suppression with ManuallyDrop and forget
 pub fn demonstrate_leak_and_forget() -> usize {
-    let original = String::from("Do Not Drop Automatically");
-    let manual = ManuallyDrop::new(original);
-    let len = manual.len();
-
-    // Take out inner value or bypass drop
-    let _forgotten = ManuallyDrop::into_inner(manual);
-    // Suppress drop
-    std::mem::forget(_forgotten);
-
-    len
+    // TODO: Create a String, wrap it in ManuallyDrop, extract its length, and suppress drop.
+    todo!("Exercise 3: Implement demonstrate_leak_and_forget")
 }
 
 #[cfg(test)]
@@ -161,6 +106,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "Student exercise: run with -- --ignored once implemented"]
     fn test_bump_allocator() {
         let bump = BumpAllocator::new(1024);
         let layout1 = Layout::from_size_align(64, 8).unwrap();
@@ -177,6 +123,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Student exercise: run with -- --ignored once implemented"]
     fn test_safe_raw_buffer() {
         let mut buf = SafeRawBuffer::<String>::with_capacity(3);
         buf.push(String::from("alloc_1"));
@@ -190,6 +137,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Student exercise: run with -- --ignored once implemented"]
     fn test_manual_drop() {
         let len = demonstrate_leak_and_forget();
         assert_eq!(len, 25);

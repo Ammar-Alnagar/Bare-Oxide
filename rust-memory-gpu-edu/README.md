@@ -93,17 +93,20 @@ From the `rust-memory-gpu-edu` directory:
 # Build the entire workspace
 cargo build
 
-# Run all automated tests across all 5 phases
+# Check the workspace
+cargo check
+
+# Run tests (excluding student exercises in progress)
 cargo test
 
-# Run tests for a specific phase
-cargo test -p phase-01-cpu-basics
-cargo test -p phase-02-cpu-low-level
-cargo test -p phase-03-gpu-memory-basics
-cargo test -p phase-04-gpu-advanced
-cargo test -p phase-05-full-pipeline
+# Run and verify your completed student exercises for each phase:
+cargo test -p phase-01-cpu-basics -- --ignored
+cargo test -p phase-02-cpu-low-level -- --ignored
+cargo test -p phase-03-gpu-memory-basics -- --ignored
+cargo test -p phase-04-gpu-advanced -- --ignored
+cargo test -p phase-05-full-pipeline -- --ignored
 
-# Run the complete end-to-end Phase 5 pipeline
+# Run your completed end-to-end Phase 5 pipeline
 cargo run -p phase-05-full-pipeline
 ```
 
