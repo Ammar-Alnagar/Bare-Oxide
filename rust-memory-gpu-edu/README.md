@@ -12,11 +12,48 @@ All modules follow **ASD-STE100** simplified technical English rules:
 
 ---
 
-## 1. Project Structure
+## 1. Global Architecture and Data Flow
+
+```mermaid
+flowchart TB
+    subgraph Host["Host CPU Memory"]
+        Stack["Stack Frame\n(LIFO, RSP)"]
+        Heap["Dynamic Heap\n(GlobalAlloc)"]
+        Pinned["Pinned Staging RAM\n(Page-Locked)"]
+    end
+
+    subgraph Bus["Interconnect Bus"]
+        DMA["PCIe DMA Controller\n(Direct Memory Access)"]
+    end
+
+    subgraph GPU["NVIDIA GPU Silicon"]
+        HBM["Global Memory (VRAM)\nHigh Bandwidth / High Latency"]
+        L2["L2 Cache (SRAM)\nCross-SM Shared"]
+        SM["Streaming Multiprocessors (SMs)"]
+        subgraph SMInternals["SM Memory Hierarchy"]
+            SharedMem["Shared Memory / L1 (Fast SRAM)"]
+            Registers["32-bit Register File"]
+            ALU["ALU / Tensor Cores"]
+        end
+    end
+
+    Stack -->|"Box / Vec"| Heap
+    Heap -->|"Driver Staging"| Pinned
+    Pinned ==>|"DMA Burst"| DMA
+    DMA ==>|"PCIe Link"| HBM
+    HBM <==>|"Cache Lines"| L2
+    L2 <==>|"Block Staging"| SharedMem
+    SharedMem -->|"Warp Loads"| Registers
+    Registers <==>|"Compute Pipeline"| ALU
+```
+
+---
+
+## 2. Project Structure
 
 ```
 rust-memory-gpu-edu/
-├── README.md                      # Project overview, hardware/software prerequisites, build guide
+├── README.md                      # Workspace overview, hardware/software prerequisites, build guide
 ├── Cargo.toml                     # Cargo workspace definition
 ├── common/                        # Shared abstractions, traits, and educational runtime harness
 │   ├── Cargo.toml
@@ -62,7 +99,59 @@ rust-memory-gpu-edu/
 
 ---
 
-## 2. Hardware and Software Requirements
+## 3. Course Progression & Syllabus
+
+```mermaid
+graph LR
+    P1["Phase 1: CPU Basics"] --> P2["Phase 2: CPU Low-Level"]
+    P2 --> P3["Phase 3: GPU Basics"]
+    P3 --> P4["Phase 4: GPU Advanced"]
+    P4 --> P5["Phase 5: Full Pipeline"]
+```
+
+### Phase 1: CPU Memory Basics
+Focuses on stack memory, heap dynamics, alignment, and the Rust borrow checker.
+- Stack vs Heap allocation mechanics and RSP register behavior.
+- Rust affine ownership, moves, mutable references (`&mut T`), and immutability (`&T`).
+- Lifetimes (`'a`) and compile-time validation.
+- Standard smart pointers: `Box<T>`, `Rc<T>`, `Arc<T>`, `RefCell<T>`.
+- Data layout, padding, alignment masks, and `#[repr(C)]`.
+
+### Phase 2: CPU Low-Level Memory & Custom Allocators
+Focuses on unsafe memory manipulation, custom allocators, and pointer provenance.
+- Raw pointers (`*const T`, `*mut T`) and manual pointer arithmetic.
+- Allocator layouts with `core::alloc::Layout`.
+- Global memory interceptors using `#[global_allocator]`.
+- Custom bump allocators and arena memory pools.
+- Safe wrappers over raw pointers and `std::mem::ManuallyDrop`.
+
+### Phase 3: GPU Memory Fundamentals with CUDA Rust
+Introduces GPU hardware initialization, contexts, and stream-ordered execution.
+- CUDA context creation and asynchronous FIFO streams.
+- `DeviceBuffer<T>` allocation and RAII cleanup.
+- Synchronous and asynchronous Host-to-Device (`HtoD`) and Device-to-Host (`DtoH`) copies.
+- Asynchronous deallocation, `DeviceBox`, and stream leases.
+- Kernel launch safety boundaries and ownership transfers.
+
+### Phase 4: Advanced GPU Memory Management
+Covers on-chip memory tiers, pinned buffers, and memory pools.
+- Dynamic and static shared memory (`__shared__`) and bank conflict avoidance.
+- Constant memory cache hierarchies and warp broadcast mechanisms.
+- Disjoint non-overlapping GPU slicing (`split_at_mut`) for safe concurrent kernel writes.
+- Page-locked pinned host memory (`cudaHostAlloc`) and Unified Memory (`cudaMallocManaged`).
+- Stream-ordered memory allocators (`cuMemAllocAsync` / `cuMemPool_t`).
+- SIMT thread hierarchy, warps, and thread block clusters.
+
+### Phase 5: Complete End-to-End Pipeline
+Implements a production batch processing engine that ties CPU and GPU concepts together.
+- Pinned host input staging.
+- Asynchronous PCIe transfers over CUDA streams.
+- Kernel compute execution and stream synchronization.
+- Output validation with zero CPU stalls.
+
+---
+
+## 4. Hardware and Software Requirements
 
 ### Hardware Requirements
 - **Host CPU**: x86_64 or aarch64 CPU with at least 8 GB RAM.
@@ -85,7 +174,7 @@ rust-memory-gpu-edu/
 
 ---
 
-## 3. How to Build and Run Each Lesson
+## 5. How to Build and Run Each Lesson
 
 From the `rust-memory-gpu-edu` directory:
 
@@ -112,7 +201,7 @@ cargo run -p phase-05-full-pipeline
 
 ---
 
-## 4. Known Limitations of the Current `cuda-rust` Release
+## 6. Known Limitations of the Current `cuda-rust` Release
 
 As documented in the official [NVIDIA cuda-rust repository](https://github.com/NVIDIA/cuda-rust):
 1. **Early Research Release**: `cuda-rust` is an active research project. Kernel compiler interfaces and runtime driver bindings may undergo breaking changes across releases.
